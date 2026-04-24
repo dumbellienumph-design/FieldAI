@@ -291,6 +291,7 @@
             
             if (mode === 'admin') {
                 document.getElementById('admin-view').classList.add('active-view');
+                document.getElementById('widget-view').classList.add('active-view'); // Show widget in admin
                 document.getElementById('unified-nav').style.display = 'flex';
                 document.getElementById('nav-bot').classList.add('active');
                 loadBotAdmin();
@@ -310,11 +311,18 @@
         function applyTheme() {
             document.documentElement.style.setProperty('--field-primary', botCfg.accentColor);
             document.getElementById('widget-biz-name').textContent = botCfg.bizName;
-            document.getElementById('bot-initial').textContent = botCfg.botName.charAt(0);
+            document.getElementById('bot-initial').textContent = (botCfg.botName || 'F').charAt(0);
         }
 
         // --- BOT LOGIC ---
-        function toggleChat() { document.getElementById('chat-window').classList.toggle('open'); }
+        function toggleChat() { 
+            const win = document.getElementById('chat-window');
+            win.classList.toggle('open'); 
+        }
+
+        function openChat() {
+            document.getElementById('chat-window').classList.add('open');
+        }
 
         function startBotSession() {
             botSessions[currentSessId] = { messages: [{ role: 'system', content: `You are ${botCfg.botName} for ${botCfg.bizName}. ${botCfg.description}. Max 3 sentences. Model: llama3-8b-8192.` }] };
