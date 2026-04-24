@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FieldAI Dashboard</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-light: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-dim: #a0a0a0;
+            --accent: #4CAF50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --sidebar-width: 240px;
+            --status-height: 40px;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .status-bar {
+            height: var(--status-height);
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #333;
+            z-index: 1001;
+        }
+
+        .status-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot-green { background-color: var(--accent); box-shadow: 0 0 5px var(--accent); }
+        .dot-red { background-color: var(--danger); box-shadow: 0 0 5px var(--danger); }
+
+        .app-container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: var(--sidebar-width); background-color: var(--bg-light); display: flex; flex-direction: column; border-right: 1px solid #333; }
+        .sidebar-header { padding: 20px; font-size: 1.2rem; font-weight: bold; color: var(--accent); text-align: center; border-bottom: 1px solid #333; }
+        .nav-links { flex: 1; padding: 20px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; transition: 0.2s; color: var(--text-dim); display: flex; align-items: center; justify-content: space-between; text-decoration: none; }
+        .nav-item:hover, .nav-item.active { background-color: #333; color: var(--text-main); border-left: 4px solid var(--accent); }
+        .nav-badge { background-color: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: none; align-items: center; justify-content: center; font-weight: bold; }
+
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .view { display: none; }
+        .view.active { display: block; }
+
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background-color: var(--bg-light); padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: var(--accent); }
+
+        .reminders-section, .inbox-section { margin-top: 40px; background-color: var(--bg-light); border-radius: 8px; padding: 20px; }
+        .reminder-item, .inbox-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #333; }
+        .reminder-meta { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: var(--text-dim); }
+        input, textarea, select { width: 100%; padding: 10px; background-color: #2c2c2c; border: 1px solid #444; border-radius: 4px; color: var(--text-main); box-sizing: border-box; }
+        button { padding: 10px 20px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        button.secondary { background-color: #555; }
+        button.danger { background-color: var(--danger); }
+        button.warning { background-color: var(--warning); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
+        th { color: var(--text-dim); font-weight: normal; }
+
+        #email-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--bg-light); padding: 20px; border-radius: 8px; width: 80%; max-width: 600px; }
+
+        .status-pill { padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; }
+        .status-Pending { background: #555; }
+        .status-Generated { background: #2196F3; }
+        .status-Sent { background: #4CAF50; }
+        .status-Failed { background: #f44336; }
+        .status-Sending { background: #000; color: #fff; animation: pulse 1.5s infinite; }
+        .status-Interested { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .status-Not-Interested { background: #555; text-decoration: line-through; }
+        .status-Question { background: var(--warning); }
+        .status-Already-Contacted { background: #9c27b0; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .loader { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="status-bar">
+        <div class="status-item">AI: <span id="ai-dot" class="dot dot-red"></span> <span id="ai-text">Checking...</span></div>
+        <div class="status-item">Bot: <span class="dot dot-green"></span> <span>Running</span></div>
+        <div class="status-item" id="queue-status" style="margin-left: 20px; display: none;">
+            <span class="loader" style="width:12px; height:12px; border-width:2px;"></span>
+            <span id="queue-text">Queue: 0</span>
+        </div>
+        <button onclick="checkNewReplies()" id="btn-check-replies" style="padding: 5px 10px; font-size: 0.7rem; margin-left: auto;">Check New Replies</button>
+    </div>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">FIELDAI</div>
+            <nav class="nav-links">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <span>Dashboard</span>
+                    <span id="reminder-badge" class="nav-badge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-view="inbox">
+                    <span>Inbox/Interested</span>
+                    <span id="inbox-badge" class="nav-badge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-view="scrape">Scrape Leads</a>
+                <a href="#" class="nav-item" data-view="campaigns">Campaigns</a>
+                <a href="#" class="nav-item" data-view="settings">Settings</a>
+            </nav>
+        </div>
+
+        <div class="main-content">
+            <div id="dashboard" class="view active">
+                <h1>Dashboard</h1>
+                <div class="stats-container">
+                    <div class="stat-card"><div class="stat-value" id="count-total">0</div><div>Total Leads</div></div>
+                    <div class="stat-card"><div class="stat-value" id="count-pending">0</div><div>Pending</div></div>
+                    <div class="stat-card"><div class="stat-value" id="count-sent">0</div><div>Sent</div></div>
+                </div>
+                <div class="reminders-section">
+                    <h2>Follow-Up Reminders (3 days since last contact)</h2>
+                    <div id="reminders-list"></div>
+                </div>
+                <button onclick="exportCSV()" style="margin-top: 20px;">Export to CSV</button>
+            </div>
+
+            <div id="inbox" class="view">
+                <h1>Interested Leads</h1>
+                <p>Leads that have replied and shown interest or asked questions.</p>
+                <div id="inbox-list"></div>
+            </div>
+
+            <div id="scrape" class="view">
+                <h1>Scrape Leads</h1>
+                <div class="form-group"><label>Niche</label><input type="text" id="scrape-niche" placeholder="e.g. Restaurants"></div>
+                <div class="form-group"><label>City</label><input type="text" id="scrape-city" list="city-list" placeholder="Pick from list or type your own...">
+                    <datalist id="city-list">
+                        <option value="Johannesburg, South Africa"><option value="Cape Town, South Africa"><option value="New York, USA"><option value="London, UK"><option value="Sydney, Australia">
+                    </datalist>
+                </div>
+                <button onclick="startScrape()" id="btn-scrape">Start Scrape</button>
+                <div style="margin: 30px 0; border-top: 1px solid #333; padding-top: 20px;">
+                    <h3>Or Import CSV</h3>
+                    <div class="form-group" style="display: flex; gap: 10px; align-items: center;"><input type="file" id="import-csv-file" accept=".csv" style="width: auto; flex: 1;"><button onclick="uploadCSV()" id="btn-import" class="secondary">Upload CSV</button></div>
+                </div>
+                <div id="scrape-results"><table><thead><tr><th>Business Name</th><th>Email</th><th>Status</th></tr></thead><tbody id="scrape-table-body"></tbody></table></div>
+            </div>
+
+            <div id="campaigns" class="view">
+                <h1>Campaigns</h1>
+                <table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead><tbody id="campaigns-table-body"></tbody></table>
+            </div>
+
+            <div id="settings" class="view">
+                <h1>Settings</h1>
+                <div class="form-group"><label>Gmail Address</label><input type="email" id="set-gmail-address"></div>
+                <div class="form-group"><label>Gmail App Password</label><input type="password" id="set-gmail-pass"></div>
+                <div class="form-group"><label>Sender Name</label><input type="text" id="set-sender-name"></div>
+                <div class="form-group"><label>Service Description</label><textarea id="set-service-desc" rows="3"></textarea></div>
+                <div class="form-group"><label>Pick Primary AI Provider</label><select id="set-preferred-ai"><option value="gemini">Gemini</option><option value="groq">Groq</option></select></div>
+                <div class="form-group"><label>Gemini API Key</label><input type="password" id="set-gemini-key"></div>
+                <div class="form-group"><label>Groq API Key</label><input type="password" id="set-groq-key"></div>
+                <div class="form-group">
+                    <label>Serper.dev API Key (For reliable scraping)</label>
+                    <input type="password" id="set-serper-key" placeholder="Get free key at serper.dev">
+                </div>
+                <div class="form-group"><label>Daily Send Cap</label><input type="number" id="set-daily-cap" value="30"></div>
+                <button onclick="saveSettings()">Save Settings</button>
+                <button onclick="requestNotifyPermission()" class="secondary" style="margin-top:20px;">Enable Browser Notifications</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="email-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Edit Email</h2>
+            <div class="form-group"><textarea id="email-content" rows="15"></textarea></div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;"><button class="secondary" onclick="closeModal()">Cancel</button><button onclick="sendApprovedEmail()" id="btn-send-now">Send Now</button></div>
+        </div>
+    </div>
+
+    <script>
+        let leads = [];
+        let previousLeads = [];
+        let currentLeadId = null;
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                item.classList.add('active');
+                document.getElementById(item.dataset.view).classList.add('active');
+                loadLeads();
+                if (item.dataset.view === 'dashboard') loadReminders();
+            });
+        });
+
+        async function api(endpoint, method = 'GET', body = null) {
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            if (body) options.body = JSON.stringify(body);
+            const resp = await fetch(`/api/${endpoint}`, options);
+            return await resp.json();
+        }
+
+        async function checkStatus() {
+            try {
+                const data = await api('status');
+                document.getElementById('ai-dot').className = data.gemini ? 'dot dot-green' : 'dot dot-red';
+                document.getElementById('ai-text').innerText = data.gemini ? 'Ready' : 'Offline';
+                
+                const qStatus = document.getElementById('queue-status');
+                if (data.queue_size > 0) {
+                    qStatus.style.display = 'flex';
+                    document.getElementById('queue-text').innerText = `Queue: ${data.queue_size}`;
+                } else {
+                    qStatus.style.display = 'none';
+                }
+            } catch (e) { }
+        }
+
+        function requestNotifyPermission() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") alert("Notifications enabled!");
+                });
+            }
+        }
+
+        function notify(title, body) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, { body });
+            }
+        }
+
+        async function checkNewReplies() {
+            const btn = document.getElementById('btn-check-replies');
+            btn.disabled = true; btn.innerText = 'Checking...';
+            const res = await api('check-replies', 'POST');
+            btn.disabled = false; btn.innerText = 'Check New Replies';
+            if (res.updated > 0) { 
+                notify("New Replies!", `Found ${res.updated} new lead responses.`);
+                loadLeads(); 
+            }
+        }
+
+        async function loadLeads() {
+            const data = await api('leads');
+            previousLeads = [...leads];
+            leads = Array.isArray(data) ? data : [];
+            
+            // Check for status changes to notify
+            leads.forEach(lead => {
+                const prev = previousLeads.find(p => p.id === lead.id);
+                if (prev && prev.status === 'Sending' && lead.status === 'Sent') {
+                    notify("Email Sent!", `Successfully emailed ${lead.name}.`);
+                } else if (prev && prev.status === 'Sending' && lead.status === 'Failed') {
+                    notify("Send Failed", `Could not email ${lead.name}. Check logs.`);
+                }
+            });
+
+            updateUI();
+        }
+
+        async function loadReminders() {
+            const reminders = await api('reminders');
+            const list = document.getElementById('reminders-list');
+            const badge = document.getElementById('reminder-badge');
+            list.innerHTML = '';
+            badge.innerText = reminders.length;
+            badge.style.display = reminders.length > 0 ? 'flex' : 'none';
+            if (reminders.length === 0) { list.innerHTML = '<p style="color: var(--text-dim)">No pending follow-ups!</p>'; return; }
+            reminders.forEach(r => {
+                const item = document.createElement('div');
+                item.className = 'reminder-item';
+                item.innerHTML = `<div class="reminder-info"><strong>${r.name}</strong> (${r.email})<div class="reminder-meta">Sent on ${r.sent_date} (${r.days_since_sent} days ago)</div></div><div style="display:flex; gap:10px;"><button class="secondary" onclick="generateAI('${r.id}')">Follow Up AI</button><button onclick="markDone('${r.id}')">Mark Done</button></div>`;
+                list.appendChild(item);
+            });
+        }
+
+        function updateUI() {
+            const sent = leads.filter(l => l.status === 'Sent').length;
+            const interested = leads.filter(l => l.status === 'Interested' || l.status === 'Question');
+            document.getElementById('count-total').innerText = leads.length;
+            document.getElementById('count-pending').innerText = leads.filter(l => l.status === 'Pending').length;
+            document.getElementById('count-sent').innerText = sent;
+
+            const inboxList = document.getElementById('inbox-list');
+            const inboxBadge = document.getElementById('inbox-badge');
+            inboxList.innerHTML = '';
+            inboxBadge.innerText = interested.length;
+            inboxBadge.style.display = interested.length > 0 ? 'flex' : 'none';
+            interested.forEach(l => {
+                const item = document.createElement('div');
+                item.className = 'inbox-item';
+                item.innerHTML = `<div class="reminder-info"><strong>${l.name}</strong> <span class="status-pill status-${l.status}">${l.status}</span><div class="reminder-meta">Reply: "${l.last_reply ? l.last_reply.substring(0, 100) : ''}..."</div></div><div style="display:flex; gap:10px;"><button class="warning" onclick="suggestReply('${l.id}')">AI Suggest Reply</button><button class="secondary" onclick="markNoInterest('${l.id}')">Mark Not Interested</button></div>`;
+                inboxList.appendChild(item);
+            });
+
+            const tbody = document.getElementById('campaigns-table-body');
+            tbody.innerHTML = '';
+            leads.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${l.name}</td><td>${l.email}</td><td><span class="status-pill status-${l.status.replace(/\s+/g, '-')}">${l.status}</span></td><td><button class="secondary" onclick="generateAI('${l.id}')">AI Write</button> ${l.generated_email ? `<button onclick="editEmail('${l.id}')">Edit/Send</button>` : ''} <button class="danger" onclick="deleteLead('${l.id}')">Del</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function suggestReply(id) {
+            const lead = leads.find(l => l.id === id);
+            const res = await api('suggest-reply', 'POST', lead);
+            editEmail(id, res.reply);
+        }
+
+        async function generateAI(id) {
+            const btn = event.target; btn.disabled = true; btn.innerHTML = 'AI thinking...';
+            const lead = leads.find(l => l.id === id);
+            const res = await api('generate-email', 'POST', lead);
+            btn.disabled = false; btn.innerText = lead.follow_up_count > 0 ? 'Follow Up AI' : 'AI Write';
+            if (res.email) { lead.generated_email = res.email; lead.status = 'Generated'; await api('leads', 'POST', leads); updateUI(); }
+        }
+
+        function editEmail(id, content = null) {
+            currentLeadId = id;
+            const lead = leads.find(l => l.id === id);
+            document.getElementById('email-content').value = content || lead.generated_email;
+            document.getElementById('modal-title').innerText = `Email to ${lead.name}`;
+            document.getElementById('email-modal').style.display = 'flex';
+        }
+
+        function sendApprovedEmail() {
+            const content = document.getElementById('email-content').value;
+            const leadId = currentLeadId;
+            
+            // 1. Mark as "Sending" locally for instant feedback
+            const localLead = leads.find(l => l.id === leadId);
+            if (localLead) localLead.status = 'Sending';
+            updateUI();
+
+            // 2. Instantly close the modal so user can move on
+            closeModal();
+
+            // 3. Send to backend without "await" (Non-blocking)
+            api('send-email', 'POST', { lead_id: leadId, content }).then(res => {
+                if (res.error) {
+                    notify("Send Failed", res.error);
+                    loadLeads(); // Refresh to show error state
+                } else {
+                    // Start periodic check to see when status changes to Sent
+                    setTimeout(loadLeads, 3000);
+                }
+            }).catch(err => {
+                notify("System Error", "Could not connect to server.");
+                loadLeads();
+            });
+        }
+
+        async function markDone(id) { await api('reminders/mark-done', 'POST', { lead_id: id }); loadReminders(); }
+        async function markNoInterest(id) { 
+            const lead = leads.find(l => l.id === id);
+            lead.status = 'Not Interested';
+            await api('leads', 'POST', leads);
+            loadLeads();
+        }
+        function closeModal() { document.getElementById('email-modal').style.display = 'none'; }
+        async function deleteLead(id) { if (confirm('Delete?')) { leads = leads.filter(l => l.id !== id); await api('leads', 'POST', leads); updateUI(); } }
+        async function saveSettings() {
+            const body = { 
+                gmail_address: document.getElementById('set-gmail-address').value, 
+                gmail_app_password: document.getElementById('set-gmail-pass').value, 
+                sender_name: document.getElementById('set-sender-name').value, 
+                service_description: document.getElementById('set-service-desc').value, 
+                preferred_ai: document.getElementById('set-preferred-ai').value, 
+                gemini_api_key: document.getElementById('set-gemini-key').value, 
+                groq_api_key: document.getElementById('set-groq-key').value,
+                serper_api_key: document.getElementById('set-serper-key').value,
+                daily_limit: document.getElementById('set-daily-cap').value 
+            };
+            await api('settings', 'POST', body); alert('Saved!'); checkStatus();
+        }
+        async function loadSettings() {
+            const config = await api('settings');
+            if (config) { 
+                document.getElementById('set-gmail-address').value = config.gmail_address || ''; 
+                document.getElementById('set-gmail-pass').value = config.gmail_app_password || ''; 
+                document.getElementById('set-sender-name').value = config.sender_name || ''; 
+                document.getElementById('set-service-desc').value = config.service_description || ''; 
+                document.getElementById('set-preferred-ai').value = config.preferred_ai || 'gemini'; 
+                document.getElementById('set-gemini-key').value = config.gemini_api_key || ''; 
+                document.getElementById('set-groq-key').value = config.groq_api_key || ''; 
+                document.getElementById('set-serper-key').value = config.serper_api_key || '';
+                document.getElementById('set-daily-cap').value = config.daily_limit || 30; 
+            }
+        }
+
+        async function uploadCSV() {
+            const fileInput = document.getElementById('import-csv-file');
+            if (fileInput.files.length === 0) return alert('Select CSV');
+            const formData = new FormData(); formData.append('file', fileInput.files[0]);
+            const resp = await fetch('/api/import-csv', { method: 'POST', body: formData });
+            const result = await resp.json();
+            alert(`Imported ${result.count} leads!`); loadLeads();
+        }
+        async function startScrape() {
+            const btn = document.getElementById('btn-scrape');
+            const niche = document.getElementById('scrape-niche').value;
+            const city = document.getElementById('scrape-city').value;
+            if (!niche || !city) return alert('Enter niche and city');
+
+            btn.disabled = true; btn.innerHTML = 'Scraping...';
+            const res = await api('scrape', 'POST', { niche, city });
+            btn.disabled = false; btn.innerText = 'Start Scrape';
+            
+            if (res.error) {
+                alert(res.error);
+                return;
+            }
+
+            loadLeads();
+            
+            let msg = `Scrape complete!\n- Found ${res.new_leads.length} new leads.`;
+            if (res.duplicates > 0) {
+                msg += `\n- Skipped ${res.duplicates} existing emails.`;
+            }
+            alert(msg);
+        }
+
+        loadSettings(); loadLeads(); loadReminders(); checkStatus(); 
+        setInterval(checkStatus, 5000);
+        setInterval(loadLeads, 15000);
+    </script>
+</body>
+</html>
