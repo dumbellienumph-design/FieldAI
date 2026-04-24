@@ -17,7 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify, send_from_directory
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='.')
 
 CONFIG_FILE = 'config.json'
 LEADS_FILE = 'leads.json'
@@ -84,7 +84,7 @@ threading.Thread(target=send_worker, daemon=True).start()
 
 @app.route('/')
 def index():
-    return send_from_directory(app.static_folder, 'index.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/api/status')
 def status():
