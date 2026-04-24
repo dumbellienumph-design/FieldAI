@@ -3,373 +3,522 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FieldAI Unified Outreach</title>
+    <title>FieldAI Unified Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f0f0f;
-            --bg-card: #1a1a1a;
+            /* Palette */
+            --field-primary: #00ffcc;
+            --field-bg: #05050a;
+            --field-surface: #10101a;
+            --field-border: #202030;
+            --field-text: #ffffff;
+            --field-text-dim: #a0a0b0;
             --accent: #00ff88;
             --wa-green: #25D366;
-            --email-blue: #007bff;
-            --text-main: #f0f0f0;
-            --text-dim: #999;
+            --bg-dark: #0f0f0f;
+            --bg-card: #1a1a1a;
             --sidebar-width: 240px;
+            --bot-bubble: #f0f0f5;
         }
 
-        body {
-            margin: 0;
-            background: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Inter', system-ui, sans-serif;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Outfit', sans-serif; background: var(--field-bg); color: var(--field-text); overflow-x: hidden; }
 
-        /* Sidebar */
-        .sidebar {
-            width: var(--sidebar-width);
+        /* --- UNIFIED TOP NAV --- */
+        .unified-nav {
             background: #000;
-            border-right: 1px solid #333;
+            padding: 10px 2rem;
             display: flex;
-            flex-direction: column;
+            gap: 20px;
+            border-bottom: 1px solid var(--field-border);
+            position: sticky;
+            top: 0;
+            z-index: 10001;
+        }
+        .unified-nav a {
+            color: var(--field-text-dim);
+            text-decoration: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: 0.3s;
+        }
+        .unified-nav a:hover, .unified-nav a.active {
+            color: var(--field-primary);
+            background: rgba(0, 255, 204, 0.1);
         }
 
+        /* --- VIEW MANAGEMENT --- */
+        .view-container { display: none !important; min-height: 100vh; }
+        .view-container.active-view { display: block !important; }
+
+        /* --- BOT ADMIN STYLES --- */
+        #admin-view { padding: 2rem; }
+        .admin-container { max-width: 1000px; margin: 0 auto; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--field-border); padding-bottom: 1rem; }
+        .admin-logo { font-size: 1.5rem; font-weight: 700; color: var(--field-primary); }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--field-border); }
+        .tab-btn { background: none; border: none; color: var(--field-text-dim); padding: 1rem; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; position: relative; }
+        .tab-btn.active { color: var(--field-primary); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--field-primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; color: var(--field-text-dim); font-size: 0.9rem; }
+        input, textarea, select { width: 100%; padding: 0.8rem; background: var(--field-surface); border: 1px solid var(--field-border); color: white; border-radius: 8px; font-family: inherit; }
+        input:focus, textarea:focus { border-color: var(--field-primary); outline: none; }
+        .btn { background: var(--field-primary); color: black; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-outline { background: transparent; border: 1px solid var(--field-primary); color: var(--field-primary); }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 1rem; border-bottom: 1px solid var(--field-border); color: #fff; }
+        th { color: var(--field-text-dim); font-weight: 400; font-size: 0.8rem; text-transform: uppercase; }
+
+        /* --- OUTREACH DASHBOARD STYLES --- */
+        #outreach-view.active-view { display: flex !important; background: var(--bg-dark); }
+        .sidebar { width: var(--sidebar-width); background: #000; border-right: 1px solid #333; display: flex; flex-direction: column; }
         .sidebar-header { padding: 30px; font-weight: 800; font-size: 1.5rem; color: var(--accent); }
         .nav-links { flex: 1; }
         .nav-item { padding: 15px 30px; cursor: pointer; color: var(--text-dim); transition: 0.3s; display: block; text-decoration: none; }
-        .nav-item:hover, .nav-item.active { background: #111; color: var(--text-main); border-left: 4px solid var(--accent); }
-
-        /* Main */
-        .main { flex: 1; overflow-y: auto; padding: 40px; }
-        .view { display: none; }
-        .view.active { display: block; }
-
-        /* Unified Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            padding: 25px;
-            border-radius: 12px;
-            text-align: center;
-            border: 1px solid #333;
-        }
-
+        .nav-item:hover, .nav-item.active { background: #111; color: var(--field-text); border-left: 4px solid var(--accent); }
+        .main-outreach { flex: 1; overflow-y: auto; padding: 40px; }
+        .outreach-subview { display: none; }
+        .outreach-subview.active { display: block; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .stat-card { background: var(--bg-card); padding: 25px; border-radius: 12px; text-align: center; border: 1px solid #333; }
         .stat-val { font-size: 2.2rem; font-weight: 800; color: var(--accent); margin-bottom: 5px; }
         .stat-label { color: var(--text-dim); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
-
-        /* Tabs/Lists */
-        .card { background: var(--bg-card); padding: 30px; border-radius: 12px; border: 1px solid #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { text-align: left; padding: 15px; border-bottom: 1px solid #333; }
-        th { color: var(--text-dim); font-size: 0.85rem; }
-
+        .card { background: var(--bg-card); padding: 30px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
         .status-pill { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
         .status-Sent { background: #004d2a; color: #00ff88; }
-        .status-Sending { background: #000; color: #fff; animation: pulse 1.5s infinite; }
         .status-Pending { background: #333; color: #999; }
-
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-        /* Template/Compose */
         .compose-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; }
-        textarea { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 15px; border-radius: 8px; resize: none; font-family: inherit; box-sizing: border-box; }
-        .preview-box { background: #111; padding: 20px; border-radius: 8px; border: 1px dashed #555; white-space: pre-wrap; font-size: 0.95rem; }
+        .preview-box { background: #111; padding: 20px; border-radius: 8px; border: 1px dashed #555; white-space: pre-wrap; font-size: 0.95rem; margin-top: 10px; }
 
-        button { background: var(--accent); color: #000; padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { filter: brightness(1.2); }
-        button.secondary { background: #333; color: #fff; }
+        /* --- CHAT WIDGET STYLES --- */
+        #widget-view { position: fixed; bottom: 20px; right: 20px; z-index: 10000; }
+        .launcher { width: 60px; height: 60px; border-radius: 30px; background: var(--field-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .launcher svg { width: 28px; height: 28px; fill: black; }
+        .chat-window { position: absolute; bottom: 80px; right: 0; width: 380px; height: 600px; background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; transform: translateY(20px); opacity: 0; pointer-events: none; transition: all 0.3s ease; }
+        .chat-window.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .chat-header { background: var(--field-primary); padding: 1.2rem; color: black; display: flex; align-items: center; gap: 12px; }
+        .header-logo { width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .status-dot { font-size: 0.75rem; display: flex; align-items: center; gap: 4px; opacity: 0.8; }
+        .status-dot::before { content: ''; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; }
+        .messages { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; background: #fdfdfd; color: #000; }
+        .message { max-width: 80%; padding: 0.8rem 1rem; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; animation: slideIn 0.3s ease; }
+        .message.bot { background: var(--bot-bubble); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .message.user { background: var(--field-primary); align-self: flex-end; border-bottom-right-radius: 2px; color: black; }
+        .input-area { padding: 1rem; border-top: 1px solid #eee; display: flex; gap: 8px; background: white; }
+        .input-area input { flex: 1; border: 1px solid #eee; padding: 0.8rem; border-radius: 25px; background: #f8f8f8; color: #333; }
+        .watermark { text-align: center; padding: 6px; font-size: 0.65rem; color: #ccc; background: white; }
+        .typing { display: flex; gap: 4px; padding: 8px; }
+        .dot { width: 6px; height: 6px; background: #ccc; border-radius: 50%; animation: bounce 1.4s infinite; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        input { background: #000; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; width: 100%; box-sizing: border-box; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 0.9rem; }
+        @media (max-width: 480px) { .chat-window { width: 90vw; right: 5vw; } }
     </style>
 </head>
-<body>
+<body onload="init()">
 
-    <div class="sidebar">
-        <div class="sidebar-header">FIELDAI</div>
-        <nav class="nav-links">
-            <a href="#" class="nav-item active" data-view="dashboard">Dashboard</a>
-            <a href="#" class="nav-item" data-view="email">Email Campaign</a>
-            <a href="#" class="nav-item" data-view="whatsapp">WhatsApp Outreach</a>
-            <a href="#" class="nav-item" data-view="contacts">Contact List</a>
-            <a href="#" class="nav-item" data-view="settings">Settings</a>
-        </nav>
+    <nav class="unified-nav" id="unified-nav" style="display:none;">
+        <a href="?mode=admin" id="nav-bot">Bot Admin</a>
+        <a href="?mode=outreach" id="nav-outreach">Outreach</a>
+        <a href="./">View Bot</a>
+    </nav>
+
+    <!-- MODE 1: CHAT WIDGET -->
+    <div id="widget-view" class="view-container">
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <div class="header-logo" id="bot-initial">F</div>
+                <div class="header-info">
+                    <h3 id="widget-biz-name">Business Name</h3>
+                    <div class="status-dot">Online now</div>
+                </div>
+            </div>
+            <div class="messages" id="message-container"></div>
+            <div class="watermark">Powered by FieldAI</div>
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                <button class="btn" onclick="sendMessage()" style="padding: 10px; border-radius: 50%; width: 40px; height: 40px;">&gt;</button>
+            </div>
+        </div>
+        <div class="launcher" onclick="toggleChat()">
+            <svg id="launcher-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path></svg>
+        </div>
     </div>
 
-    <div class="main">
-        <!-- Dashboard -->
-        <div id="dashboard" class="view active">
-            <h1>Unified Metrics</h1>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-val" id="stat-sent">0</div><div class="stat-label">Outreach Sent</div></div>
-                <div class="stat-card"><div class="stat-val" id="stat-replies">0</div><div class="stat-label">Total Replies</div></div>
-                <div class="stat-card"><div class="stat-val" id="stat-conv">0%</div><div class="stat-label">Conversion Rate</div></div>
-                <div class="stat-card"><div class="stat-val" id="stat-best">N/A</div><div class="stat-label">Best Channel</div></div>
+    <!-- MODE 2: BOT ADMIN -->
+    <div id="admin-view" class="view-container">
+        <div class="admin-container">
+            <div class="admin-header">
+                <div class="admin-logo">Bot Management</div>
             </div>
-            
-            <div class="card">
-                <h2>Active Queue</h2>
-                <div id="global-queue-list">No pending tasks.</div>
-            </div>
-        </div>
-
-        <!-- Email Tab -->
-        <div id="email" class="view">
-            <h1>Email Campaign</h1>
-            <div class="compose-grid">
-                <div class="card">
-                    <h3>Draft Email</h3>
-                    <div class="form-group"><label>Subject</label><input type="text" id="email-subject-input"></div>
-                    <textarea id="email-body-input" rows="12" placeholder="Write your pitch here..."></textarea>
-                    <div style="margin-top:20px; display:flex; gap:10px;">
-                        <button onclick="sendBulk('email')">Send to All Pending</button>
+            <nav class="tabs">
+                <button class="tab-btn active" onclick="showBotTab('settings')">Settings</button>
+                <button class="tab-btn" onclick="showBotTab('leads')">Leads <span id="leads-badge" class="badge">0</span></button>
+                <button class="tab-btn" onclick="showBotTab('conversations')">Replay</button>
+                <button class="tab-btn" onclick="showBotTab('test')">Test</button>
+            </nav>
+            <div id="bot-tab-settings" class="tab-content active">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <div class="form-group"><label>Biz Name</label><input type="text" id="set-bizName"></div>
+                        <div class="form-group"><label>Bot Name</label><input type="text" id="set-botName"></div>
+                        <div class="form-group"><label>Groq Key</label><input type="password" id="set-groqKey"></div>
+                    </div>
+                    <div>
+                        <div class="form-group"><label>WA Number</label><input type="text" id="set-waNumber"></div>
+                        <div class="form-group"><label>Color</label><input type="color" id="set-accentColor" style="height:50px"></div>
+                        <div class="form-group"><label>Welcome</label><input type="text" id="set-welcomeMsg"></div>
                     </div>
                 </div>
-                <div class="card">
-                    <h3>Pending Contacts</h3>
-                    <table id="email-pending-table">
-                        <thead><tr><th>Name</th><th>Email</th><th>Action</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="form-group"><label>Description</label><textarea id="set-description" rows="4"></textarea></div>
+                <button class="btn" onclick="saveBotSettings()">Save Bot Config</button>
+            </div>
+            <div id="bot-tab-leads" class="tab-content">
+                <table><thead><tr><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>Action</th></tr></thead><tbody id="bot-leads-body"></tbody></table>
+            </div>
+            <div id="bot-tab-conversations" class="tab-content">
+                <div id="sessions-list"></div>
+                <div id="replay-box" style="margin-top:20px; display:none; background:#111; padding:20px; border-radius:10px;"></div>
+            </div>
+            <div id="bot-tab-test" class="tab-content">
+                <div style="height:500px; background:#222; border-radius:10px; position:relative; overflow:hidden">
+                    <p style="padding:20px; color:#666">Test mode active. Use the widget in the corner.</p>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- WhatsApp Tab -->
-        <div id="whatsapp" class="view">
-            <h1>WhatsApp Outreach</h1>
-            <div class="compose-grid">
-                <div class="card">
-                    <h3>Message Template</h3>
-                    <p style="color:var(--text-dim); font-size: 0.8rem;">Use {{name}} and {{business}}</p>
-                    <textarea id="wa-template-input" rows="8" placeholder="Hi {{name}}, checked out {{business}} and..."></textarea>
-                    
-                    <div class="form-group" style="margin-top:20px;">
-                        <label><input type="checkbox" id="wa-ai-toggle"> Use AI Personalization</label>
+    <!-- MODE 3: OUTREACH DASHBOARD -->
+    <div id="outreach-view" class="view-container">
+        <div class="sidebar">
+            <div class="sidebar-header">OUTREACH</div>
+            <nav class="nav-links">
+                <a href="#" class="nav-item active" onclick="showOutreachView('dash')">Dashboard</a>
+                <a href="#" class="nav-item" onclick="showOutreachView('email')">Email Campaign</a>
+                <a href="#" class="nav-item" onclick="showOutreachView('whatsapp')">WhatsApp Outreach</a>
+                <a href="#" class="nav-item" onclick="showOutreachView('contacts')">Contact List</a>
+                <a href="#" class="nav-item" onclick="showOutreachView('settings')">Settings</a>
+            </nav>
+        </div>
+        <div class="main-outreach">
+            <div id="out-dash" class="outreach-subview active">
+                <h1>Unified Metrics</h1>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-val" id="stat-sent">0</div><div class="stat-label">Outreach Sent</div></div>
+                    <div class="stat-card"><div class="stat-val" id="stat-replies">0</div><div class="stat-label">Total Replies</div></div>
+                    <div class="stat-card"><div class="stat-val" id="stat-conv">0%</div><div class="stat-label">Conversion Rate</div></div>
+                    <div class="stat-card"><div class="stat-val" id="stat-best">N/A</div><div class="stat-label">Best Channel</div></div>
+                </div>
+                <div class="card"><h2>Active Queue</h2><div id="global-queue-list">No pending tasks.</div></div>
+            </div>
+            <div id="out-email" class="outreach-subview">
+                <h1>Email Campaign</h1>
+                <div class="compose-grid">
+                    <div class="card">
+                        <h3>Draft Email</h3>
+                        <div class="form-group"><label>Subject</label><input type="text" id="email-subject-input"></div>
+                        <textarea id="email-body-input" rows="12" placeholder="Write your pitch here..."></textarea>
+                        <button class="btn" style="margin-top:20px" onclick="sendBulk('email')">Send to All Pending</button>
                     </div>
-                    
-                    <button onclick="previewWA()">Refresh Preview</button>
-                    <div id="wa-preview" class="preview-box" style="margin-top:20px;">Preview will show here...</div>
-                    
-                    <button onclick="sendBulk('whatsapp')" style="margin-top:20px; background:var(--wa-green); color:#fff; width:100%;">Start WhatsApp Blast</button>
+                    <div class="card"><h3>Pending Contacts</h3><table id="email-pending-table"><thead><tr><th>Name</th><th>Email</th><th>Action</th></tr></thead><tbody></tbody></table></div>
                 </div>
+            </div>
+            <div id="out-whatsapp" class="outreach-subview">
+                <h1>WhatsApp Outreach</h1>
+                <div class="compose-grid">
+                    <div class="card">
+                        <h3>Message Template</h3>
+                        <textarea id="wa-template-input" rows="8" placeholder="Hi {{name}}, ..."></textarea>
+                        <div id="wa-preview" class="preview-box">Preview...</div>
+                        <button class="btn" style="margin-top:20px; background:var(--wa-green); color:#fff" onclick="sendBulk('whatsapp')">Start WhatsApp Blast</button>
+                    </div>
+                    <div class="card"><h3>Pending Numbers</h3><table id="wa-pending-table"><thead><tr><th>Name</th><th>Number</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+            <div id="out-contacts" class="outreach-subview">
+                <h1>Contact Database</h1>
+                <div class="card" style="margin-bottom:30px;">
+                    <h3>Import Bulk</h3>
+                    <input type="file" id="csv-file-input" accept=".csv" onchange="handleImport()" style="display:none">
+                    <button class="btn" onclick="document.getElementById('csv-file-input').click()">Upload CSV (name, business, email, phone)</button>
+                </div>
+                <div class="card"><table id="full-contacts-table"><thead><tr><th>Name</th><th>Business</th><th>Email</th><th>WhatsApp</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div id="out-settings" class="outreach-subview">
+                <h1>Unified Settings</h1>
                 <div class="card">
-                    <h3>Pending Numbers</h3>
-                    <table id="wa-pending-table">
-                        <thead><tr><th>Name</th><th>Number</th><th>Action</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="form-group"><label>Agency Name</label><input type="text" id="set-agency"></div>
+                    <div class="form-group"><label>Sender Name</label><input type="text" id="set-sender"></div>
+                    <div class="form-group"><label>Meta API Key</label><input type="password" id="set-meta-key"></div>
+                    <div class="form-group"><label>WhatsApp Phone ID</label><input type="text" id="set-phone-id"></div>
+                    <button class="btn" onclick="saveOutreachSettings()">Save Configuration</button>
                 </div>
-            </div>
-        </div>
-
-        <!-- Contacts Management -->
-        <div id="contacts" class="view">
-            <h1>Contact Database</h1>
-            <div class="card" style="margin-bottom:30px;">
-                <h3>Import Bulk</h3>
-                <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="handleImport()">
-                <button onclick="document.getElementById('csv-file-input').click()">Upload CSV (name, business, email, phone)</button>
-            </div>
-            <div class="card">
-                <table id="full-contacts-table">
-                    <thead><tr><th>Name</th><th>Business</th><th>Email</th><th>WhatsApp</th><th>Status</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Settings -->
-        <div id="settings" class="view">
-            <h1>Unified Settings</h1>
-            <div class="card">
-                <div class="form-group">
-                    <label>Agency Name</label>
-                    <input type="text" id="set-agency" value="FieldAI">
-                </div>
-                <div class="form-group">
-                    <label>Sender Name</label>
-                    <input type="text" id="set-sender">
-                </div>
-                <hr style="border:0; border-top:1px solid #333; margin:30px 0;">
-                <div class="form-group">
-                    <label>Meta WhatsApp API Key</label>
-                    <input type="password" id="set-meta-key">
-                </div>
-                <div class="form-group">
-                    <label>WhatsApp Phone Number ID</label>
-                    <input type="text" id="set-phone-id">
-                </div>
-                <div class="form-group">
-                    <label>Gemini API Key (for AI Personalisation)</label>
-                    <input type="password" id="set-gemini-key">
-                </div>
-                <div class="form-group">
-                    <label>Gmail App Password (for Email)</label>
-                    <input type="password" id="set-gmail-pass">
-                </div>
-                <button onclick="saveSettings()">Save Configuration</button>
             </div>
         </div>
     </div>
 
     <script>
-        let contacts = [];
+        // --- GLOBAL STATE ---
+        const DEFAULT_BOT = { bizName: "FieldAI", botName: "Lexi", welcomeMsg: "Hi! How can I help?", waNumber: "", groqKey: "", accentColor: "#00ffcc", description: "AI Agency" };
+        let botCfg = JSON.parse(localStorage.getItem('fieldai_settings')) || DEFAULT_BOT;
+        let botLeads = JSON.parse(localStorage.getItem('fieldai_leads')) || [];
+        let botSessions = JSON.parse(localStorage.getItem('fieldai_sessions')) || {};
+        
+        let outreachContacts = JSON.parse(localStorage.getItem('fieldai_contacts')) || [];
+        let outreachCfg = JSON.parse(localStorage.getItem('fieldai_outreach_cfg')) || { agency: "FieldAI", sender: "" };
 
-        // Tab System
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                item.classList.add('active');
-                document.getElementById(item.dataset.view).classList.add('active');
-                refreshData();
-            });
-        });
+        let currentSessId = Date.now().toString();
+        let msgCount = 0;
+        let isLeadCapture = false;
+        let leadStep = '';
+        let tempLead = {};
 
-        async function api(endpoint, method = 'GET', body = null) {
-            const opts = { method, headers: { 'Content-Type': 'application/json' } };
-            if (body) opts.body = JSON.stringify(body);
-            return fetch(`/api/${endpoint}`, opts).then(r => r.json());
-        }
+        // --- CORE INIT ---
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            const mode = params.get('mode');
 
-        async function refreshData() {
-            contacts = await api('leads');
-            updateUI();
-            updateStats();
-        }
-
-        function updateStats() {
-            const sent = contacts.filter(c => c.email_sent || c.whatsapp_sent).length;
-            const replies = contacts.filter(c => c.replied).length;
-            const conv = sent > 0 ? ((replies / sent) * 100).toFixed(1) : 0;
+            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active-view'));
             
+            if (mode === 'admin') {
+                document.getElementById('admin-view').classList.add('active-view');
+                document.getElementById('unified-nav').style.display = 'flex';
+                document.getElementById('nav-bot').classList.add('active');
+                loadBotAdmin();
+            } else if (mode === 'outreach') {
+                document.getElementById('outreach-view').classList.add('active-view');
+                document.getElementById('unified-nav').style.display = 'flex';
+                document.getElementById('nav-outreach').classList.add('active');
+                refreshOutreach();
+                loadOutreachSettings();
+            } else {
+                document.getElementById('widget-view').classList.add('active-view');
+                startBotSession();
+            }
+            applyTheme();
+        }
+
+        function applyTheme() {
+            document.documentElement.style.setProperty('--field-primary', botCfg.accentColor);
+            document.getElementById('widget-biz-name').textContent = botCfg.bizName;
+            document.getElementById('bot-initial').textContent = botCfg.botName.charAt(0);
+        }
+
+        // --- BOT LOGIC ---
+        function toggleChat() { document.getElementById('chat-window').classList.toggle('open'); }
+
+        function startBotSession() {
+            botSessions[currentSessId] = { messages: [{ role: 'system', content: `You are ${botCfg.botName} for ${botCfg.bizName}. ${botCfg.description}. Max 3 sentences. Model: llama3-8b-8192.` }] };
+            addBotMsg('bot', botCfg.welcomeMsg);
+        }
+
+        function addBotMsg(role, text) {
+            const cont = document.getElementById('message-container');
+            const d = document.createElement('div');
+            d.className = `message ${role}`;
+            d.textContent = text;
+            cont.appendChild(d);
+            cont.scrollTop = cont.scrollHeight;
+            if (role !== 'system') {
+                if (!botSessions[currentSessId]) botSessions[currentSessId] = { messages: [] };
+                botSessions[currentSessId].messages.push({ role, content: text });
+            }
+            localStorage.setItem('fieldai_sessions', JSON.stringify(botSessions));
+        }
+
+        async function sendMessage() {
+            const inp = document.getElementById('user-input');
+            const val = inp.value.trim();
+            if (!val) return;
+            inp.value = '';
+            addBotMsg('user', val);
+            msgCount++;
+
+            if (isLeadCapture) { handleLeadStep(val); return; }
+            if (msgCount >= 3) { startLeadCapture(); return; }
+
+            if (!botCfg.groqKey) { addBotMsg('bot', "Please set Groq key in admin."); return; }
+
+            showTyping(true);
+            try {
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${botCfg.groqKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'llama3-8b-8192', messages: botSessions[currentSessId].messages, temperature: 0.7 })
+                });
+                const data = await res.json();
+                showTyping(false);
+                addBotMsg('bot', data.choices[0].message.content);
+            } catch (e) { showTyping(false); addBotMsg('bot', "Connection error."); }
+        }
+
+        function showTyping(show) {
+            const id = 'typing-ind';
+            if (show) {
+                const d = document.createElement('div'); d.id = id; d.className = 'typing';
+                d.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+                document.getElementById('message-container').appendChild(d);
+            } else { document.getElementById(id)?.remove(); }
+        }
+
+        function startLeadCapture() { isLeadCapture = true; leadStep = 'name'; addBotMsg('bot', "Can I get your name?"); }
+        function handleLeadStep(val) {
+            if (leadStep === 'name') { tempLead.name = val; leadStep = 'phone'; addBotMsg('bot', `Great ${val}! Phone?`); }
+            else if (leadStep === 'phone') { tempLead.phone = val; leadStep = 'email'; addBotMsg('bot', "Email?"); }
+            else {
+                tempLead.email = val; isLeadCapture = false;
+                botLeads.push({ ...tempLead, date: new Date().toISOString() });
+                localStorage.setItem('fieldai_leads', JSON.stringify(botLeads));
+                addBotMsg('bot', "Thanks! We will reach out.");
+            }
+        }
+
+        // --- BOT ADMIN ---
+        function showBotTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('bot-tab-' + id).classList.add('active');
+            event.target.classList.add('active');
+            if (id === 'leads') renderBotLeads();
+            if (id === 'conversations') renderBotSessions();
+        }
+
+        function loadBotAdmin() {
+            const c = botCfg;
+            document.getElementById('set-bizName').value = c.bizName || '';
+            document.getElementById('set-botName').value = c.botName || '';
+            document.getElementById('set-groqKey').value = c.groqKey || '';
+            document.getElementById('set-waNumber').value = c.waNumber || '';
+            document.getElementById('set-accentColor').value = c.accentColor || '#00ffcc';
+            document.getElementById('set-welcomeMsg').value = c.welcomeMsg || '';
+            document.getElementById('set-description').value = c.description || '';
+        }
+
+        function saveBotSettings() {
+            botCfg = {
+                bizName: document.getElementById('set-bizName').value,
+                botName: document.getElementById('set-botName').value,
+                groqKey: document.getElementById('set-groqKey').value,
+                waNumber: document.getElementById('set-waNumber').value,
+                accentColor: document.getElementById('set-accentColor').value,
+                welcomeMsg: document.getElementById('set-welcomeMsg').value,
+                description: document.getElementById('set-description').value
+            };
+            localStorage.setItem('fieldai_settings', JSON.stringify(botCfg));
+            alert("Bot Settings Saved.");
+            applyTheme();
+        }
+
+        function renderBotLeads() {
+            const b = document.getElementById('bot-leads-body');
+            b.innerHTML = botLeads.map(l => `<tr><td>${new Date(l.date).toLocaleDateString()}</td><td>${l.name}</td><td>${l.phone}</td><td>${l.email}</td><td><button class="btn btn-outline" onclick="delBotLead('${l.date}')">Del</button></td></tr>`).join('');
+        }
+        function delBotLead(date) { botLeads = botLeads.filter(l => l.date !== date); localStorage.setItem('fieldai_leads', JSON.stringify(botLeads)); renderBotLeads(); }
+
+        function renderBotSessions() {
+            const l = document.getElementById('sessions-list');
+            l.innerHTML = Object.keys(botSessions).map(s => `<div onclick="replaySess('${s}')" style="padding:10px; border-bottom:1px solid #333; cursor:pointer">Session ${new Date(parseInt(s)).toLocaleString()}</div>`).join('');
+        }
+        function replaySess(id) {
+            const b = document.getElementById('replay-box'); b.style.display = 'block';
+            b.innerHTML = botSessions[id].messages.map(m => `<p><b>${m.role.toUpperCase()}:</b> ${m.content}</p>`).join('');
+        }
+
+        // --- OUTREACH DASHBOARD ---
+        function showOutreachView(id) {
+            document.querySelectorAll('.outreach-subview').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById('out-' + id).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function refreshOutreach() {
+            updateOutreachUI();
+            updateOutreachStats();
+        }
+
+        function updateOutreachStats() {
+            const sent = outreachContacts.filter(c => c.sent).length;
+            const replies = outreachContacts.filter(c => c.replied).length;
             document.getElementById('stat-sent').innerText = sent;
             document.getElementById('stat-replies').innerText = replies;
-            document.getElementById('stat-conv').innerText = conv + '%';
+            document.getElementById('stat-conv').innerText = (sent > 0 ? (replies/sent*100).toFixed(1) : 0) + '%';
+        }
+
+        function updateOutreachUI() {
+            const cBody = document.querySelector('#full-contacts-table tbody');
+            cBody.innerHTML = outreachContacts.map(c => `<tr><td>${c.name}</td><td>${c.business}</td><td>${c.email}</td><td>${c.phone}</td><td><span class="status-pill status-${c.sent ? 'Sent' : 'Pending'}">${c.sent ? 'Sent' : 'Pending'}</span></td></tr>`).join('');
             
-            // Channel calculation
-            const eSent = contacts.filter(c => c.email_sent).length;
-            const wSent = contacts.filter(c => c.whatsapp_sent).length;
-            const eRep = contacts.filter(c => c.email_sent && c.replied).length;
-            const wRep = contacts.filter(c => c.whatsapp_sent && c.replied).length;
+            document.querySelector('#email-pending-table tbody').innerHTML = outreachContacts.filter(c => !c.sent && c.email).map(c => `<tr><td>${c.name}</td><td>${c.email}</td><td><button class="btn btn-outline" onclick="generateOutreach('email', '${c.email}')">AI Write</button></td></tr>`).join('');
+            document.querySelector('#wa-pending-table tbody').innerHTML = outreachContacts.filter(c => !c.sent && c.phone).map(c => `<tr><td>${c.name}</td><td>${c.phone}</td><td><button class="btn btn-outline" onclick="generateOutreach('whatsapp', '${c.phone}')">Draft</button></td></tr>`).join('');
+        }
+
+        async function generateOutreach(type, val) {
+            const lead = outreachContacts.find(c => c.email === val || c.phone === val);
+            const prompt = `Write a short cold ${type} to ${lead.name} from ${lead.business}. Agency: ${outreachCfg.agency}. Keep it under 2 sentences.`;
             
-            const eRate = eSent > 0 ? eRep/eSent : 0;
-            const wRate = wSent > 0 ? wRep/wSent : 0;
+            if (!botCfg.groqKey) { alert("Set Groq key in Bot Settings."); return; }
             
-            document.getElementById('stat-best').innerText = wRate > eRate ? 'WhatsApp' : (eSent > 0 ? 'Email' : 'N/A');
+            try {
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${botCfg.groqKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'llama3-8b-8192', messages: [{role:'user', content: prompt}] })
+                });
+                const data = await res.json();
+                const content = data.choices[0].message.content;
+                if (type === 'email') document.getElementById('email-body-input').value = content;
+                else document.getElementById('wa-template-input').value = content;
+            } catch (e) { alert("AI Error"); }
         }
 
-        function updateUI() {
-            // Contacts Table
-            const cTbody = document.querySelector('#full-contacts-table tbody');
-            cTbody.innerHTML = contacts.map(c => `
-                <tr>
-                    <td>${c.name}</td>
-                    <td>${c.business}</td>
-                    <td>${c.email}</td>
-                    <td>${c.whatsapp}</td>
-                    <td><span class="status-pill status-${c.status}">${c.status}</span></td>
-                </tr>
-            `).join('');
-
-            // Email Pending Table
-            const ePBody = document.querySelector('#email-pending-table tbody');
-            ePBody.innerHTML = contacts.filter(c => !c.email_sent).map(c => `
-                <tr><td>${c.name}</td><td>${c.email}</td><td><button onclick="generateSingle('email', '${c.id}')">Write AI</button></td></tr>
-            `).join('');
-
-            // WA Pending Table
-            const wPBody = document.querySelector('#wa-pending-table tbody');
-            wPBody.innerHTML = contacts.filter(c => !c.whatsapp_sent).map(c => `
-                <tr><td>${c.name}</td><td>${c.whatsapp}</td><td><button onclick="generateSingle('whatsapp', '${c.id}')">Draft</button></td></tr>
-            `).join('');
+        function sendBulk(type) {
+            const pending = outreachContacts.filter(c => !c.sent && (type === 'email' ? c.email : c.phone));
+            pending.forEach(c => c.sent = true);
+            localStorage.setItem('fieldai_contacts', JSON.stringify(outreachContacts));
+            alert(`Sent ${pending.length} ${type}s (Simulated)`);
+            refreshOutreach();
         }
 
-        function previewWA() {
-            let template = document.getElementById('wa-template-input').value;
-            const sample = contacts[0] || {name: "John", business: "Car Co"};
-            let preview = template.replace('{{name}}', sample.name).replace('{{business}}', sample.business);
-            document.getElementById('wa-preview').innerText = preview;
-        }
-
-        async function generateSingle(channel, id) {
-            const lead = contacts.find(c => c.id === id);
-            const res = await api('generate-outreach', 'POST', { lead, channel });
-            if (channel === 'email') {
-                document.getElementById('email-body-input').value = res.content;
-            } else {
-                document.getElementById('wa-template-input').value = res.content;
-                previewWA();
-            }
-        }
-
-        async function sendBulk(channel) {
-            const pending = contacts.filter(c => !c[`${channel}_sent`]);
-            const template = channel === 'email' ? document.getElementById('email-body-input').value : document.getElementById('wa-template-input').value;
-            const useAI = document.getElementById('wa-ai-toggle').checked;
-
-            alert(`Queuing ${pending.length} ${channel} messages...`);
-            
-            for (const lead of pending) {
-                let content = template.replace('{{name}}', lead.name).replace('{{business}}', lead.business);
-                if (useAI && channel === 'whatsapp') {
-                    // Quick AI rewrite to avoid spam
-                    const res = await api('generate-outreach', 'POST', { lead, channel: 'whatsapp_ai' });
-                    content = res.content;
-                }
-                api('send-outreach', 'POST', { lead_id: lead.id, channel, content });
-            }
-            setTimeout(refreshData, 2000);
-        }
-
-        async function handleImport() {
+        function handleImport() {
             const file = document.getElementById('csv-file-input').files[0];
-            const fd = new FormData();
-            fd.append('file', file);
-            const res = await fetch('/api/import-csv', { method: 'POST', body: fd }).then(r => r.json());
-            alert(`Imported ${res.count} contacts.`);
-            refreshData();
-        }
-
-        async function saveSettings() {
-            const body = {
-                agency_name: document.getElementById('set-agency').value,
-                sender_name: document.getElementById('set-sender').value,
-                meta_api_key: document.getElementById('set-meta-key').value,
-                phone_number_id: document.getElementById('set-phone-id').value,
-                gemini_api_key: document.getElementById('set-gemini-key').value,
-                gmail_app_password: document.getElementById('set-gmail-pass').value
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const rows = e.target.result.split('\n').slice(1);
+                rows.forEach(r => {
+                    const [name, business, email, phone] = r.split(',');
+                    if (name) outreachContacts.push({ name, business, email, phone, sent: false, replied: false });
+                });
+                localStorage.setItem('fieldai_contacts', JSON.stringify(outreachContacts));
+                refreshOutreach();
             };
-            await api('settings', 'POST', body);
-            alert('Settings Saved.');
+            reader.readAsText(file);
         }
 
-        async function loadSettings() {
-            const s = await api('settings');
-            document.getElementById('set-agency').value = s.agency_name || 'FieldAI';
-            document.getElementById('set-sender').value = s.sender_name || '';
-            document.getElementById('set-meta-key').value = s.meta_api_key || '';
-            document.getElementById('set-phone-id').value = s.phone_number_id || '';
-            document.getElementById('set-gemini-key').value = s.gemini_api_key || '';
-            document.getElementById('set-gmail-pass').value = s.gmail_app_password || '';
+        function loadOutreachSettings() {
+            document.getElementById('set-agency').value = outreachCfg.agency || '';
+            document.getElementById('set-sender').value = outreachCfg.sender || '';
         }
 
-        // Init
-        loadSettings();
-        refreshData();
-        setInterval(() => api('status').then(d => {
-            document.getElementById('stat-sent').closest('.main').querySelector('#queue-status')?.remove(); // Cleanup old
-            // Update queue count in real-time
-        }), 5000);
+        function saveOutreachSettings() {
+            outreachCfg = {
+                agency: document.getElementById('set-agency').value,
+                sender: document.getElementById('set-sender').value,
+                metaKey: document.getElementById('set-meta-key').value,
+                phoneId: document.getElementById('set-phone-id').value
+            };
+            localStorage.setItem('fieldai_outreach_cfg', JSON.stringify(outreachCfg));
+            alert("Outreach Settings Saved.");
+        }
     </script>
 </body>
 </html>
